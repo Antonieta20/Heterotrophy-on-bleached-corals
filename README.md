@@ -1,5 +1,6 @@
 # Heterotrophy-on-bleached-corals
-Influence of heterotrophy on the physiology of symbiotic and bleached corals:Lack of heterotrophic compensation in bleached corals. In this repository you'll find all raw data as well as the code we used to process these for our manuscript.
+Influence of heterotrophy on the physiology of symbiotic and bleached corals:Lack of heterotrophic compensation in bleached corals. 
+In this repository you'll find all raw data as well as the code we used to process these for our manuscript.
 
 We analyzed after the 13-week feeding experiment for bleached and symbiotic corals: (I) the coral host growth (i.e., growth rates: surface area, volume growth, and calcification rates) and  (II) the photosynthesis of the coral symbionts (i.e., net photosynthesis, respiration, gross photosynthesis) of the reef-building corals Galaxea fascicularis, Porites lobata and Stylophora pistillata. For the statistical assessment and data visualization we used the statistical R Project for Statistical Computing Software together with the graphical user interface RStudio. System info of R, RStudio, and a list of all used packages can be found in this repository.
 
