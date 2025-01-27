@@ -1,0 +1,985 @@
+# Coral Growth -----------------------------------------------------------
+# Entire Data analysis related to the Coral Growth
+
+# Upload data tables -------------------------------------------------------
+#read 3D Scanning data
+#needed for correction of growth rates
+tab_size <- read.csv2("C:/Users/Maria Antonieta/Documents/María Antonieta Panamá/Second_Manuscript/Data/Scann.csv",sep=";", dec=".",header=T) %>% 
+  na.omit() %>% 
+  select(fragment, t0_3d_vol,t0_3d_surf, t2_3d_vol,t2_3d_surf)
+
+#read buoyant weight data
+# Weight table
+tab_calcification <- read.csv2("C:/Users/Maria Antonieta/Documents/María Antonieta Panamá/Second_Manuscript/Data/Weight_Data_Table.csv", dec=".",header=T) %>% 
+  na.omit() 
+
+# Join both data to processing  --------------------------------------------------------
+tab_calcification <-  merge(tab_calcification, tab_size, by="fragment", all = TRUE)
+
+ ## Data processing for buoyant weight data ---------------------------------------------------------
+# Here we standardize the difference in weight to the Surface_t2 area 
+# of the coral colony. First we transform skeletal weight under water to 
+# skeletal weight using the seacarb package with a the mean measured temperature 
+# and salinity at the timepoints and a skeletal density of 2,93 g/cm³. 
+# Then we use the photosynthetically active surface area at t0 (first measurement), 
+# after removing the necrotic areas from the model. The results are stated as mg/cm².
+# according to the method of Jokiel et al. 1978 and Davies 1989
+
+# Calculate and standardize
+
+skeleton_weight <- function(buoyant_weight, S, T, P = 0, 
+                            rho_aragonite = 2930){
+  
+  x <- seacarb::rho(S = S, T = T, P = P)
+  y <- buoyant_weight / (1 - (x / rho_aragonite))
+  attributes(y) <- NULL
+  y
+}
+
+# replace buoyant weight with dry weight 
+# Characteristics of waterbody used for buoyant weighing:
+# Salinity: 35
+# Temperature: 26.5°C
+
+tab_calcification$t0_bouyant_weight_.T0 <- skeleton_weight(tab_calcification$t0_bouyant_weight, S=35, T=26.5, P = 0, rho_aragonite = 2930)
+
+tab_calcification$t2_bouyant_weight_.T2 <- skeleton_weight(tab_calcification$t2_bouyant_weight, S=35, T=26.5, P = 0, rho_aragonite = 2930)
+
+tab_calcification <- tab_calcification %>% 
+  mutate(calcification = (((t2_bouyant_weight_.T2-t0_bouyant_weight_.T0)*1000)/(t2_3d_surf/100)))
+
+write.table(tab_calcification, sep = ";", "Output/Tab_calcification_processed.csv")
+datatable(tab_calcification, caption = "Table 1: Calcification rates.")
+
+#calculate growth in surface area (%)
+
+tab_size$growth_surf <- ((100/tab_size$t0_3d_surf)*tab_size$t2_3d_surf)-100
+
+#growth in volume (cm² per cm³)
+
+tab_size$growth_vol <- (tab_size$t2_3d_vol - tab_size$t0_3d_vol)/1000/(tab_size$t0_3d_surf/100)
+
+str(tab_size)
+
+tab_growth <- merge(tab_calcification, tab_size, by = "fragment", all = TRUE)
+
+write.table(tab_growth, sep = ";", "Output/Tab_growth_processed.csv")
+datatable(tab_growth, caption = "Table 1: Growth rates in surface area and volume.") 
+
+
+# Descriptive statistics ------------------------------------------------
+# ----- 1. Explanation of this part of the script ------------------------------------------
+# This script focuses on the statistical analyzes of the corals growth rates. Growth was measured in
+#   a) Living tissue area growth 
+#   b) Volume growth
+#   c) Calcification growth
+# This script builds up on data tables produced before
+#   here growth rates were calculated at the end of the 13 weeks.
+#     t0-t2: week 0 to 13 after the start experiment
+# Statistical analyzes will be conducted using LMER 
+#   together with a holm adjusted glht summary
+
+# Prepare data for statistical analyzes --------------------------------------------------------
+# relevel treatments in all tables
+#Variable food as a factor
+tab_growth$food = as.factor(tab_growth$food)
+#re name labels - FOOD
+levels(tab_growth$food)
+tab_growth$food = factor(tab_growth$food, levels = c(5,2,3,1,4),
+                         labels=c("Control", "Artemia", "Low complexity", "Medium complexity", "High complexity "))
+levels(tab_growth$food)
+str(tab_growth)
+
+# Check Outlier
+# Check data for (extreme) outliers
+# Result: No extreme outliers
+outliers_calcification <- tab_data %>%
+  drop_na() %>%
+  group_by(food, species) %>%
+  identify_outliers(calcification) 
+outliers_calcification
+
+# Overview mean and SD values ---------------------------------------------
+skim_1 <- tab_data %>% 
+  skim()
+summy_1 <- tab_data %>%
+  drop_na() %>%
+  group_by(species, food) %>%
+  get_summary_stats(calcification)  # package: rstatix
+
+#skim_1
+datatable(summy_1, caption = "Table 5: Descriptive summary 
+          statistics of calcification (mg/cm²")
+#Re name state colum to Condition
+names(tab_growth)
+names (tab_growth)[5] = "Condition"
+names (tab_growth)
+#re name labels - Condition
+tab_growth$Condition = as.factor(tab_growth$Condition)
+#re name labels - Condition
+levels(tab_growth$Condition)
+tab_growth$Condition = factor(tab_growth$Condition, 
+                              labels=c("Bleached", "Symbiotic"))
+levels(tab_growth$Condition)
+
+#Statistical analysis - Symbiotic vs Bleached per food option
+# The code for S. pistillata is given below. The analysis was carried out in exactly the same way for G. fascicularis and P. lobata. 
+# The code for Calcification is given below. The analysis was carried out in exactly the same way volume and surface area. 
+
+#Filter Stylophora pistillata
+tab_growth_Spi_Control <- tab_growth %>%
+  filter(species=="Stylophora pistillata")
+#Filter Control food option
+tab_growth_Spi_Control <- tab_growth_Spi_Control %>%
+  filter(food=="Control")
+
+#Factor of the analysis
+tab_growth_Spi_Control$Condition = as.factor(tab_growth_Spi_Control$Condition)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_Control$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_Control$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_Control$Condition = as.factor(tab_growth_Spi_Control$Condition)
+
+###Check normality
+hist(tab_growth_Spi_Control$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_control <- lmer(scale(calcification + 100) ~ Condition + (1|genotype), data= tab_growth_Spi_control)
+check_singularity(model_calcification_Spi_control)
+#Result True
+check_normality(model_calcification_Spi_control)
+check_heteroscedasticity(model_calcification_Spi_control)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_control,
+                    linfct = mcp(condition = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Filter dissolved food food option
+tab_growth_Spi_Control <- tab_growth_Spi_dissolved  %>%
+  filter(food=="dissolved")
+
+#Factor of the analysis
+tab_growth_Spi_dissolved$Condition = as.factor(tab_growth_Spi_dissolved$Condition)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_dissolved$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_dissolved$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_dissolved$Condition = as.factor(tab_growth_Spi_dissolved$Condition)
+
+###Check normality
+hist(tab_growth_Spi_dissolved$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_dissolved <- lmer(scale(calcification + 100) ~ Condition + (1|genotype), data= tab_growth_Spi_dissolved)
+check_singularity(model_calcification_Spi_dissolved)
+#Result True
+check_normality(model_calcification_Spi_dissolved)
+check_heteroscedasticity(model_calcification_Spi_dissolved)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_dissolved,
+                    linfct = mcp(condition = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Filter Medium complexity food option
+tab_growth_Spi_low <- tab_growth_Spi_low  %>%
+  filter(food=="Low complexity")
+
+#Factor of the analysis
+tab_growth_Spi_low$Condition = as.factor(tab_growth_Spi_low$Condition)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_low$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_low$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_low$Condition = as.factor(tab_growth_Spi_low$Condition)
+
+###Check normality
+hist(tab_growth_Spi_low$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_low <- lmer(scale(calcification + 100) ~ Condition + (1|genotype), data= tab_growth_Spi_low)
+check_singularity(model_calcification_Spi_low)
+#Result True
+check_normality(model_calcification_Spi_low)
+check_heteroscedasticity(model_calcification_Spi_low)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_low,
+                    linfct = mcp(condition = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Filter Medium complexity food option
+tab_growth_Spi_medium <- tab_growth_Spi_medium  %>%
+  filter(food=="Medium complexity")
+
+#Factor of the analysis
+tab_growth_Spi_medium$Condition = as.factor(tab_growth_Spi_medium$Condition)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_medium$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_medium$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_medium$Condition = as.factor(tab_growth_Spi_medium$Condition)
+
+###Check normality
+hist(tab_growth_Spi_medium$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_medium <- lmer(scale(calcification + 100) ~ Condition + (1|genotype), data= tab_growth_Spi_medium)
+check_singularity(model_calcification_Spi_medium)
+#Result True
+check_normality(model_calcification_Spi_medium)
+check_heteroscedasticity(model_calcification_Spi_medium)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_medium,
+                    linfct = mcp(condition = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Filter High complexity food option
+tab_growth_Spi_high <- tab_growth_Spi_high  %>%
+  filter(food=="High complexity")
+
+#Factor of the analysis
+tab_growth_Spi_high$Condition = as.factor(tab_growth_Spi_high$Condition)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_high$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_high$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_high$Condition = as.factor(tab_growth_Spi_high$Condition)
+
+###Check normality
+hist(tab_growth_Spi_high$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_high <- lmer(scale(calcification + 100) ~ Condition + (1|genotype), data= tab_growth_Spi_high)
+check_singularity(model_calcification_Spi_high)
+#Result True
+check_normality(model_calcification_Spi_high)
+check_heteroscedasticity(model_calcification_Spi_high)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_high,
+                    linfct = mcp(condition = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+
+#Statistical analysis - Bleached corals per food option
+# The code for S. pistillata is given below. The analysis was carried out in exactly the same way for G. fascicularis and P. lobata. 
+# The code for Calcification is given below. The analysis was carried out in exactly the same way volume and surface area. 
+
+#Filter Condition = Bleached
+tab_growth <- 
+  tab_growth %>% 
+  filter(Condition == "Bleached") 
+
+#Filter Stylophora pistillata
+# All bleached S. pistillata corals died in this treatment so this analysis was not taken into account for the article. 
+tab_growth_Spi_Control <- tab_growth %>%
+  filter(species=="Stylophora pistillata")
+#Filter Control food option
+tab_growth_Spi_Control <- tab_growth_Spi_Control %>%
+  filter(food=="Control")
+
+#Factor of the analysis
+tab_growth_Spi_Control$food = as.factor(tab_growth_Spi_Control$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_Control$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_Control$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_Control$food = as.factor(tab_growth_Spi_Control$food)
+
+###Check normality
+hist(tab_growth_Spi_Control$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_control <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_growth_Spi_control)
+check_singularity(model_calcification_Spi_control)
+#Result True
+check_normality(model_calcification_Spi_control)
+check_heteroscedasticity(model_calcification_Spi_control)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_control,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Filter dissolved food food option
+tab_growth_Spi_Control <- tab_growth_Spi_dissolved  %>%
+  filter(food=="dissolved")
+
+#Factor of the analysis
+tab_growth_Spi_dissolved$food = as.factor(tab_growth_Spi_dissolved$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_dissolved$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_dissolved$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_dissolved$food = as.factor(tab_growth_Spi_dissolved$food)
+
+###Check normality
+hist(tab_growth_Spi_dissolved$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_dissolved <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_growth_Spi_dissolved)
+check_singularity(model_calcification_Spi_dissolved)
+#Result True
+check_normality(model_calcification_Spi_dissolved)
+check_heteroscedasticity(model_calcification_Spi_dissolved)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_dissolved,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Filter Medium complexity food option
+tab_growth_Spi_low <- tab_growth_Spi_low  %>%
+  filter(food=="Low complexity")
+
+#Factor of the analysis
+tab_growth_Spi_low$food = as.factor(tab_growth_Spi_low$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_low$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_low$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_low$food = as.factor(tab_growth_Spi_low$food)
+
+###Check normality
+hist(tab_growth_Spi_low$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_low <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_growth_Spi_low)
+check_singularity(model_calcification_Spi_low)
+#Result True
+check_normality(model_calcification_Spi_low)
+check_heteroscedasticity(model_calcification_Spi_low)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_low,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Filter Medium complexity food option
+tab_growth_Spi_medium <- tab_growth_Spi_medium  %>%
+  filter(food=="Medium complexity")
+
+#Factor of the analysis
+tab_growth_Spi_medium$food = as.factor(tab_growth_Spi_medium$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_medium$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_medium$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_medium$food = as.factor(tab_growth_Spi_medium$food)
+
+###Check normality
+hist(tab_growth_Spi_medium$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_medium <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_growth_Spi_medium)
+check_singularity(model_calcification_Spi_medium)
+#Result True
+check_normality(model_calcification_Spi_medium)
+check_heteroscedasticity(model_calcification_Spi_medium)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_medium,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Filter High complexity food option
+tab_growth_Spi_high <- tab_growth_Spi_high  %>%
+  filter(food=="High complexity")
+
+#Factor of the analysis
+tab_growth_Spi_high$food = as.factor(tab_growth_Spi_high$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_high$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_high$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_high$food = as.factor(tab_growth_Spi_high$food)
+
+###Check normality
+hist(tab_growth_Spi_high$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_high <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_growth_Spi_high)
+check_singularity(model_calcification_Spi_high)
+#Result True
+check_normality(model_calcification_Spi_high)
+check_heteroscedasticity(model_calcification_Spi_high)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_high,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Statistical analysis - Symbiotic corals per food option
+# The code for S. pistillata is given below. The analysis was carried out in exactly the same way for G. fascicularis and P. lobata. 
+# The code for Calcification is given below. The analysis was carried out in exactly the same way volume and surface area. 
+
+#Filter Condition = Symbiotic
+tab_growth <- 
+  tab_growth %>% 
+  filter(Condition == "Symbiotic") 
+
+#Filter Stylophora pistillata
+tab_growth_Spi_Control <- tab_growth %>%
+  filter(species=="Stylophora pistillata")
+#Filter Control food option
+tab_growth_Spi_Control <- tab_growth_Spi_Control %>%
+  filter(food=="Control")
+
+#Factor of the analysis
+tab_growth_Spi_Control$food = as.factor(tab_growth_Spi_Control$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_Control$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_Control$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_Control$food = as.factor(tab_growth_Spi_Control$food)
+
+###Check normality
+hist(tab_growth_Spi_Control$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_control <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_growth_Spi_control)
+check_singularity(model_calcification_Spi_control)
+#Result True
+check_normality(model_calcification_Spi_control)
+check_heteroscedasticity(model_calcification_Spi_control)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_control,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Filter dissolved food food option
+tab_growth_Spi_Control <- tab_growth_Spi_dissolved  %>%
+  filter(food=="dissolved")
+
+#Factor of the analysis
+tab_growth_Spi_dissolved$food = as.factor(tab_growth_Spi_dissolved$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_dissolved$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_dissolved$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_dissolved$food = as.factor(tab_growth_Spi_dissolved$food)
+
+###Check normality
+hist(tab_growth_Spi_dissolved$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_dissolved <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_growth_Spi_dissolved)
+check_singularity(model_calcification_Spi_dissolved)
+#Result True
+check_normality(model_calcification_Spi_dissolved)
+check_heteroscedasticity(model_calcification_Spi_dissolved)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_dissolved,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Filter Medium complexity food option
+tab_growth_Spi_low <- tab_growth_Spi_low  %>%
+  filter(food=="Low complexity")
+
+#Factor of the analysis
+tab_growth_Spi_low$food = as.factor(tab_growth_Spi_low$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_low$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_low$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_low$food = as.factor(tab_growth_Spi_low$food)
+
+###Check normality
+hist(tab_growth_Spi_low$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_low <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_growth_Spi_low)
+check_singularity(model_calcification_Spi_low)
+#Result True
+check_normality(model_calcification_Spi_low)
+check_heteroscedasticity(model_calcification_Spi_low)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_low,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Filter Medium complexity food option
+tab_growth_Spi_medium <- tab_growth_Spi_medium  %>%
+  filter(food=="Medium complexity")
+
+#Factor of the analysis
+tab_growth_Spi_medium$food = as.factor(tab_growth_Spi_medium$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_medium$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_medium$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_medium$food = as.factor(tab_growth_Spi_medium$food)
+
+###Check normality
+hist(tab_growth_Spi_medium$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_medium <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_growth_Spi_medium)
+check_singularity(model_calcification_Spi_medium)
+#Result True
+check_normality(model_calcification_Spi_medium)
+check_heteroscedasticity(model_calcification_Spi_medium)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_medium,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#Filter High complexity food option
+tab_growth_Spi_high <- tab_growth_Spi_high  %>%
+  filter(food=="High complexity")
+
+#Factor of the analysis
+tab_growth_Spi_high$food = as.factor(tab_growth_Spi_high$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_growth_Spi_high$calcification) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_growth_Spi_high$calcification)
+which(outliers)
+#result: 0
+
+#condition as a factor
+tab_growth_Spi_high$food = as.factor(tab_growth_Spi_high$food)
+
+###Check normality
+hist(tab_growth_Spi_high$calcification, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_calcification_Spi_high <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_growth_Spi_high)
+check_singularity(model_calcification_Spi_high)
+#Result True
+check_normality(model_calcification_Spi_high)
+check_heteroscedasticity(model_calcification_Spi_high)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_calcification_Spi_high,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+# Effect size analysis  ---------------------------------------------------
+# The code for S. pistillata is given below. The analysis was carried out in exactly the same way for G. fascicularis and P. lobata. 
+# The code for Calcification is given below. The analysis was carried out in exactly the same way volume and surface area. 
+# #Result: Most values followed this trend.
+#Hedges' g-effect size of -1.061266, 
+#being negative, tells us that the symbiotic group 
+#has superior growth to the white group and 
+#that the magnitude of this difference is large. 
+#In an applied context, this finding suggests 
+#that the symbiotic treatment has a #noticeably positive impact on #growth 
+#significantly positive impact on #growth in 
+#compared to the bleached group.
+
+#Filter per species
+growth_spi <- tab_growth %>% 
+  filter(species=="Stylophora pistillata")  
+
+#Filter per food option
+#Control
+growth_spi_control <- growth_spi %>% 
+  filter(food=="control") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(calcification ~ condition, data = growth_spi_control, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(growth_spi_control$condition)
+#"Bleached"  "Symbiotic"
+
+#dissolved food
+growth_spi_dissolved <- growth_spi %>% 
+  filter(food=="dissolved food") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(calcification ~ condition, data = growth_spi_dissolved, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(growth_spi_dissolved$condition)
+#"Bleached"  "Symbiotic"
+
+#low complexity
+growth_spi_low <- growth_spi %>% 
+  filter(food=="low complexity") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(calcification ~ condition, data = growth_spi_low, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(growth_spi_low$condition)
+#"Bleached"  "Symbiotic"
+
+#medium complexity
+growth_spi_medium <- growth_spi %>% 
+  filter(food=="medium complexity") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(calcification ~ condition, data = growth_spi_medium, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(growth_spi_medium$condition)
+#"Bleached"  "Symbiotic"
+
+#medium complexity
+growth_spi_high <- growth_spi %>% 
+  filter(food=="high complexity") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(calcification ~ condition, data = growth_spi_high, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(growth_spi_high$condition)
+#"Bleached"  "Symbiotic"
+
+# Plot Symbiotic vs bleached per food option ----------------------------------------------------
+# The code for S. pistillata is given below. The plot was carried out in exactly the same way for G. fascicularis and P. lobata. 
+# The code for Calcification is given below. The plot was carried out in exactly the same way volume and surface area. 
+
+#Boxplot
+#Filter specie
+growth_spi <- tab_growth %>% 
+  filter(species=="Stylophora pistillata")
+
+#x labels 
+a <- 18
+#Y lebels 
+b <- 17
+c <- 17
+#boxplot
+d <- 0.3
+#EZ Y labels
+e <- 15
+
+# Define specific colours for each level of 'food'
+food_colors <- c('Control' = "#FFB703", 
+                 'Dissolved food' = "#FB8500", 
+                 'Low complexity' = "#5CACEE", 
+                 'Medium complexity' = "#219EBC",	
+                 'High complexity ' = "#4682B4")
+
+#Significance in asterisks *
+data.segm_1 <-data.frame(x=1,y=83,xend=2,yend=83,
+                          food= factor("Dissolved food"))
+data.segm_2 <-data.frame(x=1,y=83,xend=2,yend=83,
+                         food= factor("Medium complexity"))
+data.segm_3 <-data.frame(x=1,y=83,xend=2,yend=83,
+                          food= factor("High complexity "))
+df_segments_1.1 <-data.frame(x=1.5,y=84, label = c("**"),
+                              food= factor("Dissolved food"))
+df_segments_2.1 <-data.frame(x=1.5,y=84, label = c("*"),
+                             food= factor("Medium complexity"))
+df_segments_3.1 <-data.frame(x=1.5,y=84, label = c("***"),
+                             food= factor("High complexity "))
+
+# Define colours with transparency for "Bleached"
+food_colors_transparent <- sapply(food_colors, function(color) {
+  adjustcolor(color, alpha.f = 0.5)})
+
+# Add transparency column to the dataframe
+growth_glx <- growth_glx %>%
+  mutate(alpha = ifelse(Condition == "Bleached", 0.5, 1),
+         fill_color = ifelse(Condition == "Bleached", food_colors_transparent[food], food_colors[food]))
+
+#Plot - Boxplot
+plot_spi_box <- ggplot(data = growth_spi) +
+  geom_boxplot(aes(x = Condition, 
+                   y = calcification, 
+                   fill = food, 
+                   alpha = alpha),
+               position = position_dodge(width = 0.8), 
+               width = 0.99, outlier.shape = NA, 
+               lwd = 0.3, color = "black") +
+  geom_jitter(aes(x = Condition, 
+                  y = calcification,
+                  fill = food,
+                  alpha = ifelse(Condition == "Bleached", 0.5, 1)), # Here the transparency of the dots is adjusted
+              pch = 21, size = 3, stroke = 0.3, 
+              position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8)) +
+  facet_grid2( ~ food, scales = "free_y") +
+  geom_segment(data=data.segm_1,
+                           aes(x=x,y=y,yend=yend,xend=xend),size= 0.7, color = "black")+
+  geom_text(data= df_segments_1.1, aes(x = x, y=y, label=label), size= 8)+
+  geom_segment(data=data.segm_2,
+               aes(x=x,y=y,yend=yend,xend=xend),size= 0.7, color = "black")+
+  geom_text(data= df_segments_2.1, aes(x = x, y=y, label=label), size= 8)+
+  geom_segment(data=data.segm_3,
+               aes(x=x,y=y,yend=yend,xend=xend),size= 0.7, color = "black")+
+  geom_text(data= df_segments_3.1, aes(x = x, y=y, label=label), size= 8)+
+  
+  scale_fill_manual(values = food_colors) +
+  scale_y_continuous(limits = c(0, 100), breaks = c(0,20,40,60,80, 100))+ 
+  scale_alpha_continuous(range = c(0.5, 1)) +  # Define the transparency range
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    legend.justification = "center", 
+    legend.direction = "horizontal",
+    legend.title = element_text(size = a),
+    legend.text = element_text(size = b),
+    axis.ticks = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(), 
+    panel.spacing = unit(0, "lines"),  # Minimise the space between facets
+    axis.line.x = element_line(colour = "black", linewidth = 0.5),
+    axis.line.y = element_line(colour = "black", linewidth = 0.5),
+    axis.text.x = element_blank(),
+    strip.text.x = element_blank(),
+    plot.title = element_text(face = "italic",hjust = 0.5, size = (a)),
+    axis.text.y = element_text(size=b), 
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = a),
+    # Change horizontal spacing between facets
+    #panel.spacing.x = unit(1, "cm"), 
+    panel.spacing.x = unit(0, "null"),
+    plot.margin = unit(c(0,0,0,0), "cm")) + # top, right, bottom, left
+  ggtitle("Galaxea fascicularis") + 
+  ylab(expression(atop(Calcification ~ growth, (mg ~ CaCO^3 ~ cm^-2))))+
+  scale_x_discrete(expand=expand_scale(add=1))
+
+print(plot_spi_box)
+
+# save
+saveRDS(object = plot_glx , file = "Output/Spi_calcification_Condition.rds" )
+plot_spi_box <- readRDS("Output/Spi_calcification_Condition.rds")
+
+#effect size
+#Filter species
+tab_spi_ez <- tab_ez %>% 
+  filter(species=="Stylophora pistillata") 
+
+#plot
+plot_ez_spi <- ggplot(tab_ez, aes(x = factor(1), y = Estimate, ymin = Lower.CI, ymax = Upper.CI)) +
+  geom_pointrange(size = 1.2, color = food_colors, linewidth = 1) +
+  geom_hline(yintercept = 0, linetype = "solid", color = "black", size = 0.5) +  
+  facet_wrap(~food, scales = "free_x", nrow = 1) +  
+  labs(
+    title = "",
+    x = "",
+    y = "Hedges g"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(size = e),
+    axis.text.y = element_text(size = e),
+    strip.text = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.y = element_blank(),  
+    axis.line.x = element_blank(),
+    axis.line.y = element_line(colour = "black", linewidth = 0.5), 
+    strip.background = element_blank(),  
+    panel.spacing = unit(0, "lines"),  
+    plot.margin = margin(0, 0, 0, 0)
+    #plot.margin = margin(-3, 29.9, 0, 24) 
+  ) +
+  coord_cartesian(clip = 'off')  
+
+# Adjusts the y-axis limits and breaks.
+plot_ez_spi <- plot_ez_spi + scale_y_continuous(
+  expand = c(0.0, 0.0),
+  limits = c(-5.0, 0.4),  
+  breaks = c(0.0,-2.5, -5.0)  
+)
+plot(plot_ez_spi)
+
+# save
+saveRDS(object = plot_ez_spi, file = "Output/EZ_spi_calcification_Condition.rds" )
+plot_ez_spi <- readRDS("Output/EZ_spi_calcification_Condition.rds")
+
+#Join plots
+#Call plots
+#Spi boxplot calcification
+plot_spi_box <- readRDS("Output/Spi_calcification_Condition.rds")
+plot_spi_box
+#Spi EZ calcification
+plot_ez_spi <- readRDS("Output/EZ_spi_calcification_Condition.rds")
+plot_ez_spi
+
+#Summary plot
+#The final code with all plots is displayed.
+
+summaryplot <- ggarrange(
+  plot_glx, plot_pl, plot_spi, 
+  plot_ezglx, plot_ezpl, plot_ezspi, 
+  plot_glx_vol, plot_pl_VOL,plot_spi_vol,
+  plot_ezglx_vol,plot_ezpl_vol, plot_ezspi_vol,
+  plot_glx_surf, plot_pl_surf,plot_spi_surf,
+  plot_ezglx_surf,plot_ezpl_surf, plot_ezspi_surf,
+  plot_glx_res,plot_pl_res,plot_spi_res,
+  plot_ezglx_res,plot_ezpl_res,plot_ezspi_res,
+  labels = c("A", "B", "C", "D", "E", "F","G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S" , "T", "U" , "V", "W" , "X"),
+  font.label = list(size = 16, color = "black"),
+  hjust = -2.8, 
+  vjust = 1.5,  
+  align = "v", 
+  nrow = 8,      
+  ncol = 3,     
+  heights = c(5, 2.6,5,2.6, 5, 2.6, 5, 2.6), 
+  widths = c(1, 1, 1)
+)
+summaryplot
+
+# Save
+ggsave("Output/Summaryplot_growth.png", plot = summaryplot,
+       scale = 1, width = 40, height = 47, units = c("cm"),
+       dpi = 600, limitsize = FALSE)
+
+### The End
