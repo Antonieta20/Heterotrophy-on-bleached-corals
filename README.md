@@ -11,5 +11,18 @@ Used coral species are referred to as: Gfa Galaxea fascicularis - Plo Porites lo
 
 Used food options: Control, Dissolved food, Low complexity, Medium complexity, High complexity.
 
+# Analyses carried out according to coral condition
+Coral growth on Symbiotic and bleached corals:
+(1) Calcification growth
+(2) Volume growth
+(3) Surface area
+
+Respiration on Symbiotic and bleached corals:
+(1) Respiration rate
+
+Photosynthesis rates on Symbiotic corals:
+(1) Net photosynthesis
+(2) Gross photosynthesis
+
 # Cite the code
 In case you want to cite our code, you can use this DOI for the latest released version of this repository:
