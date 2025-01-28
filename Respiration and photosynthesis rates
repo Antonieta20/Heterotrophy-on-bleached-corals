@@ -1279,9 +1279,7 @@ summaryplot <- ggarrange(
   nrow = 6,      
   ncol = 3,    
   heights = c(5, 2.6,5,2.6, 5, 2.6), 
-  widths = c(1, 1, 1)
-  
-)
+  widths = c(1, 1, 1))
 
 summaryplot
 
