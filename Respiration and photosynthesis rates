@@ -661,3 +661,337 @@ result <- tidy(glht(model_respiration_Spi_high,
                     linfct = mcp(food = "Tukey"))) %>%
   add_significance("adj.p.value")
 result
+
+#Statistical analysis - Bleached corals per food option
+# The code for S. pistillata is given below. The analysis was carried out in exactly the same way for G. fascicularis and P. lobata. 
+# The code for respiration on t2 is given below. 
+
+#Filter Condition = Bleached
+tab_respiration <- 
+ tab_respiration %>% 
+  filter(Condition == "Bleached") 
+
+#Control
+#Filter Stylophora pistillata
+tab_respiration_Spi_Control <- tab_respiration %>%
+  filter(species=="Stylophora pistillata")
+#Filter Control food option
+tab_respiration_Spi_Control <- tab_respiration_Spi_Control%>%
+  filter(food=="Control")
+
+#Factor of the analysis
+tab_respiration_Spi_Contro$food = as.factor(tab_respiration_Spi_Contro$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_respiration_Spi_Contro$respiration) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_respiration_Spi_Contro$respiration)
+which(outliers)
+#result: 0
+
+#food as a factor
+tab_respiration_Spi_Contro$food = as.factor(tab_respiration_Spi_Contro$food)
+
+###Check normality
+hist(tab_respiration_Spi_Contro, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_respiration_Spi_control <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_respiration_Spi_control)
+check_singularity(model_respiration_Spi_control)
+#Result True
+check_normality(model_respiration_Spi_control)
+check_heteroscedasticity(model_respiration_Spi_control)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_respiration_Spi_control,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#dissolved food
+#Filter Stylophora pistillata
+tab_respiration_Spi_dissolved <- tab_respiration %>%
+  filter(species=="Stylophora pistillata")
+#Filter dissolved food food option
+tab_respiration_Spi_dissolved <- tab_respiration_Spi_dissolved %>%
+  filter(food=="dissolved food")
+
+#Factor of the analysis
+tab_respiration_Spi_dissolved$food = as.factor(tab_respiration_Spi_dissolved$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_respiration_Spi_dissolved$respiration) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_respiration_Spi_dissolved$respiration)
+which(outliers)
+#result: 0
+
+#food as a factor
+tab_respiration_Spi_dissolved$food = as.factor(tab_respiration_Spi_dissolved$food)
+
+###Check normality
+hist(tab_respiration_Spi_dissolved, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_respiration_Spi_dissolved <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_respiration_Spi_dissolved)
+check_singularity(model_respiration_Spi_dissolved)
+#Result True
+check_normality(model_respiration_Spi_dissolved)
+check_heteroscedasticity(model_respiration_Spi_dissolved)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_respiration_Spi_dissolved,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#low complexity
+#Filter Stylophora pistillata
+tab_respiration_Spi_low <- tab_respiration %>%
+  filter(species=="Stylophora pistillata")
+#Filter low complexity food option
+tab_respiration_Spi_low  <- tab_respiration_Spi_low  %>%
+  filter(food=="low complexity")
+
+#Factor of the analysis
+tab_respiration_Spi_low$food = as.factor(tab_respiration_Spi_low$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_respiration_Spi_low$respiration) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_respiration_Spi_low$respiration)
+which(outliers)
+#result: 0
+
+#food as a factor
+tab_respiration_Spi_low$food = as.factor(tab_respiration_Spi_low$food)
+
+###Check normality
+hist(tab_respiration_Spi_low, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_respiration_Spi_low <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_respiration_Spi_low)
+check_singularity(model_respiration_Spi_low)
+#Result True
+check_normality(model_respiration_Spi_low)
+check_heteroscedasticity(model_respiration_Spi_low)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_respiration_Spi_low,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#medium complexity
+#Filter Stylophora pistillata
+tab_respiration_Spi_medium <- tab_respiration %>%
+  filter(species=="Stylophora pistillata")
+#Filter medium complexity food option
+tab_respiration_Spi_medium  <- tab_respiration_Spi_medium  %>%
+  filter(food=="medium complexity")
+
+#Factor of the analysis
+tab_respiration_Spi_medium$food = as.factor(tab_respiration_Spi_medium$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_respiration_Spi_medium$respiration) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_respiration_Spi_medium$respiration)
+which(outliers)
+#result: 0
+
+#food as a factor
+tab_respiration_Spi_medium$food = as.factor(tab_respiration_Spi_medium$food)
+
+###Check normality
+hist(tab_respiration_Spi_medium, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_respiration_Spi_medium <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_respiration_Spi_medium)
+check_singularity(model_respiration_Spi_medium)
+#Result True
+check_normality(model_respiration_Spi_medium)
+check_heteroscedasticity(model_respiration_Spi_medium)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_respiration_Spi_medium,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#medium complexity
+#Filter Stylophora pistillata
+tab_respiration_Spi_medium <- tab_respiration %>%
+  filter(species=="Stylophora pistillata")
+#Filter medium complexity food option
+tab_respiration_Spi_medium  <- tab_respiration_Spi_medium  %>%
+  filter(food=="medium complexity")
+
+#Factor of the analysis
+tab_respiration_Spi_medium$food = as.factor(tab_respiration_Spi_medium$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_respiration_Spi_medium$respiration) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_respiration_Spi_medium$respiration)
+which(outliers)
+#result: 0
+
+#food as a factor
+tab_respiration_Spi_medium$food = as.factor(tab_respiration_Spi_medium$food)
+
+###Check normality
+hist(tab_respiration_Spi_medium, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_respiration_Spi_medium <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_respiration_Spi_medium)
+check_singularity(model_respiration_Spi_medium)
+#Result True
+check_normality(model_respiration_Spi_medium)
+check_heteroscedasticity(model_respiration_Spi_medium)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_respiration_Spi_medium,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+#high complexity
+#Filter Stylophora pistillata
+tab_respiration_Spi_high <- tab_respiration %>%
+  filter(species=="Stylophora pistillata")
+#Filter high complexity food option
+tab_respiration_Spi_high <- tab_respiration_Spi_high  %>%
+  filter(food=="high complexity")
+
+#Factor of the analysis
+tab_respiration_Spi_high$food = as.factor(tab_respiration_Spi_high$food)
+
+#Shapiro - to take into account: lower than 0.05 no normal distribution so lmer is not possible
+shapiro.test(tab_respiration_Spi_high$respiration) #Shapiro test: p values lower than 0.05 rejected null hypothesis (normal distribution)
+#Result: normal distribution
+#check outliers - 
+outliers <- check_outliers(tab_respiration_Spi_high$respiration)
+which(outliers)
+#result: 0
+
+#food as a factor
+tab_respiration_Spi_high$food = as.factor(tab_respiration_Spi_high$food)
+
+###Check normality
+hist(tab_respiration_Spi_high, freq = F,
+     ylab = "calcification",
+     xlab = "Species")
+#Result: normal distribution
+
+#lmer model 
+model_respiration_Spi_high <- lmer(scale(calcification + 100) ~ food + (1|genotype), data= tab_respiration_Spi_high)
+check_singularity(model_respiration_Spi_high)
+#Result True
+check_normality(model_respiration_Spi_high)
+check_heteroscedasticity(model_respiration_Spi_high)
+#Result normality ok - ok heterocedasticity
+result <- tidy(glht(model_respiration_Spi_high,
+                    linfct = mcp(food = "Tukey"))) %>%
+  add_significance("adj.p.value")
+result
+
+# Effect size analysis  ---------------------------------------------------
+# The code for S. pistillata is given below. The analysis was carried out in exactly the same way for G. fascicularis and P. lobata. 
+# The code for respiration is given below. 
+
+#Filter per species
+respiration_spi <- tab_respiration %>% 
+  filter(species=="Stylophora pistillata")  
+
+#Filter per food option
+#Control
+respiration_spi_control <- respiration_spi %>% 
+  filter(food=="control") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(respiration ~ condition, data = respiration_spi_control, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(respiration_spi_control$condition)
+#"Bleached"  "Symbiotic"
+
+#dissolved food
+respiration_spi_dissolved <- respiration_spi %>% 
+  filter(food=="dissolved food") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(respiration ~ condition, data = respiration_spi_dissolved, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(respiration_spi_dissolved$condition)
+#"Bleached"  "Symbiotic"
+
+#low complexity
+respiration_spi_low <- respiration_spi %>% 
+  filter(food=="low complexity") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(respiration ~ condition, data = respiration_spi_low, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(respiration_spi_low$condition)
+#"Bleached"  "Symbiotic"
+
+#medium complexity
+respiration_spi_medium <- respiration_spi %>% 
+  filter(food=="medium complexity") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(respiration ~ condition, data = respiration_spi_medium, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(respiration_spi_medium$condition)
+#"Bleached"  "Symbiotic"
+
+#high complexity
+respiration_spi_high <- respiration_spi %>% 
+  filter(food=="high complexity") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(respiration ~ condition, data = respiration_spi_high, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(respiration_spi_high$condition)
+#"Bleached"  "Symbiotic"
+
