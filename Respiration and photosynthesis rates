@@ -913,11 +913,16 @@ result
 
 # Effect size analysis  ---------------------------------------------------
 # The code for S. pistillata is given below. The analysis was carried out in exactly the same way for G. fascicularis and P. lobata. 
-# The code for respiration is given below. 
+# The code for respiration is given below.
+# The code for symbiotic is given below.
 
 #Filter per species
 respiration_spi <- tab_respiration %>% 
   filter(species=="Stylophora pistillata")  
+
+#Filter per condition
+respiration_spi <- tab_respiration %>% 
+  filter(condition=="Symbiotic") 
 
 #Filter per food option
 #Control
@@ -994,4 +999,296 @@ ci <- result$conf.int
 result
 levels(respiration_spi_high$condition)
 #"Bleached"  "Symbiotic"
+
+# The code for Bleached is given below.
+
+#Filter per species
+respiration_spi <- tab_respiration %>% 
+  filter(species=="Stylophora pistillata")  
+
+#Filter per condition
+respiration_spi <- tab_respiration %>% 
+  filter(condition=="Bleached") 
+
+#Filter per food option
+#Control
+respiration_spi_control <- respiration_spi %>% 
+  filter(food=="control") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(respiration ~ condition, data = respiration_spi_control, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(respiration_spi_control$condition)
+#"Bleached"  "Symbiotic"
+
+#dissolved food
+respiration_spi_dissolved <- respiration_spi %>% 
+  filter(food=="dissolved food") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(respiration ~ condition, data = respiration_spi_dissolved, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(respiration_spi_dissolved$condition)
+#"Bleached"  "Symbiotic"
+
+#low complexity
+respiration_spi_low <- respiration_spi %>% 
+  filter(food=="low complexity") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(respiration ~ condition, data = respiration_spi_low, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(respiration_spi_low$condition)
+#"Bleached"  "Symbiotic"
+
+#medium complexity
+respiration_spi_medium <- respiration_spi %>% 
+  filter(food=="medium complexity") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(respiration ~ condition, data = respiration_spi_medium, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(respiration_spi_medium$condition)
+#"Bleached"  "Symbiotic"
+
+#high complexity
+respiration_spi_high <- respiration_spi %>% 
+  filter(food=="high complexity") 
+
+#Effect size
+
+# Calculate Hedges' g using the cohen.d function.
+# Interpretation: results close to 0 (+ or -) indicate that the difference is small and vice versa.
+resul <- cohen.d(respiration ~ condition, data = respiration_spi_high, hedges.correction = TRUE)
+g_value <- result$estimate
+ci <- result$conf.int
+result
+levels(respiration_spi_high$condition)
+#"Bleached"  "Symbiotic"
+
+# Plot Symbiotic vs bleached per food option ----------------------------------------------------
+# The code for S. pistillata is given below. The plot was carried out in exactly the same way for G. fascicularis and P. lobata. 
+# The code for respiration is given below. 
+
+#Boxplot
+#Filter specie
+respiration_spi <- tab_respiration %>% 
+  filter(species=="Stylophora pistillata")
+
+#x labels 
+a <- 18
+#Y lebels 
+b <- 17
+c <- 17
+#boxplot
+d <- 0.3
+#EZ Y labels
+e <- 15
+
+# Define specific colours for each level of 'food'
+food_colors <- c('Control' = "#FFB703", 
+                 'Dissolved food' = "#FB8500", 
+                 'Low complexity' = "#5CACEE", 
+                 'Medium complexity' = "#219EBC",	
+                 'High complexity ' = "#4682B4")
+
+#Significance in asterisks *
+data.segm_1 <-data.frame(x=1,y=65,xend=2,yend=65,
+food= factor("Dissolved food"))
+data.segm_2 <-data.frame(x=1,y=65,xend=2,yend=65,
+                         food= factor("Low complexity"))
+data.segm_3 <-data.frame(x=1,y=65,xend=2,yend=65,
+                         food= factor("Medium complexity"))
+data.segm_4 <-data.frame(x=1,y=65,xend=2,yend=65,
+                         food= factor("High complexity "))
+
+df_segments_1.1 <-data.frame(x=1.5,y=65.5, label = c("***"),
+food= factor("Dissolved food"))
+df_segments_2.1 <-data.frame(x=1.5,y=65.5, label = c("***"),
+                             food= factor("Low complexity"))
+df_segments_3.1 <-data.frame(x=1.5,y=65.5, label = c("*"),
+                             food= factor("Medium complexity"))
+df_segments_4.1 <-data.frame(x=1.5,y=65.5, label = c("**"),
+                             food= factor("High complexity "))
+
+# Define colours with transparency for "Bleached"
+food_colors_transparent <- sapply(food_colors, function(color) {
+  adjustcolor(color, alpha.f = 0.5)})
+
+# Add transparency column to the dataframe
+respiration_spi <- respiration_spix %>%
+  mutate(alpha = ifelse(Condition == "Bleached", 0.5, 1),
+         fill_color = ifelse(Condition == "Bleached", food_colors_transparent[food], food_colors[food]))
+
+#Plot - Boxplot
+plot_spi_box <- ggplot(data = respiration_spi) +
+  geom_boxplot(aes(x = Condition, 
+                   y = respiration, 
+                   fill = food, 
+                   alpha = alpha),
+               position = position_dodge(width = 0.8), 
+               width = 0.99, outlier.shape = NA, 
+               lwd = 0.3, color = "black") +
+  geom_jitter(aes(x = Condition, 
+                  y = respiration,
+                  fill = food,
+                  alpha = ifelse(Condition == "Bleached", 0.5, 1)), # Here the transparency of the dots is adjusted
+              pch = 21, size = 3, stroke = 0.3, 
+              position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8)) +
+  facet_grid2( ~ food, scales = "free_y") +
+  geom_segment(data=data.segm_1,
+  aes(x=x,y=y,yend=yend,xend=xend),size= 0.7, color = "black")+
+   geom_text(data= df_segments_1.1, aes(x = x, y=y, label=label), size= 8)+
+   geom_segment(data=data.segm_2,
+               aes(x=x,y=y,yend=yend,xend=xend),size= 0.7, color = "black")+
+  geom_text(data= df_segments_2.1, aes(x = x, y=y, label=label), size= 8)+
+  geom_segment(data=data.segm_3,
+               aes(x=x,y=y,yend=yend,xend=xend),size= 0.7, color = "black")+
+  geom_text(data= df_segments_3.1, aes(x = x, y=y, label=label), size= 8)+
+  geom_segment(data=data.segm_4,
+               aes(x=x,y=y,yend=yend,xend=xend),size= 0.7, color = "black")+
+  geom_text(data= df_segments_4.1, aes(x = x, y=y, label=label), size= 8)+
+    scale_fill_manual(values = food_colors) +
+  scale_y_continuous(limits = c(0, 100), breaks = c(0,20,40,60,80, 100))+ 
+  scale_alpha_continuous(range = c(0.5, 1)) +  # Define the transparency range
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    legend.justification = "center", 
+    legend.direction = "horizontal",
+    legend.title = element_text(size = a),
+    legend.text = element_text(size = b),
+    axis.ticks = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(), 
+    panel.spacing = unit(0, "lines"),  # Minimise the space between facets
+    axis.line.x = element_line(colour = "black", linewidth = 0.5),
+    axis.line.y = element_line(colour = "black", linewidth = 0.5),
+    axis.text.x = element_blank(),
+    strip.text.x = element_blank(),
+    plot.title = element_text(face = "italic",hjust = 0.5, size = (a)),
+    axis.text.y = element_text(size=b), 
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = a),
+    # Change horizontal spacing between facets
+    #panel.spacing.x = unit(1, "cm"), 
+    panel.spacing.x = unit(0, "null"),
+    plot.margin = unit(c(0,0,0,0), "cm")) + # top, right, bottom, left
+  ggtitle("Galaxea fascicularis") + 
+ ylab(expression(atop(Respiration, (µg~O[2]~cm^{-2}~h^{-1}))))+
+  scale_x_discrete(expand=expand_scale(add=1))
+
+print(plot_spi_box)
+
+# save
+saveRDS(object = plot_glx , file = "Output/Spi_respiration_Condition.rds" )
+plot_spi_box <- readRDS("Output/Spi_respiration_Condition.rds")
+
+#effect size
+#Filter species
+tab_spi_ez <- tab_ez %>% 
+  filter(species=="Stylophora pistillata") 
+
+#plot
+plot_ez_spi <- ggplot(tab_ez, aes(x = factor(1), y = Estimate, ymin = Lower.CI, ymax = Upper.CI)) +
+  geom_pointrange(size = 1.2, color = food_colors, linewidth = 1) +
+  geom_hline(yintercept = 0, linetype = "solid", color = "black", size = 0.5) +  
+  facet_wrap(~food, scales = "free_x", nrow = 1) +  
+  labs(
+    title = "",
+    x = "",
+    y = "Hedges g"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(size = e),
+    axis.text.y = element_text(size = e),
+    strip.text = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.y = element_blank(),  
+    axis.line.x = element_blank(),
+    axis.line.y = element_line(colour = "black", linewidth = 0.5), 
+    strip.background = element_blank(),  
+    panel.spacing = unit(0, "lines"),  
+    plot.margin = margin(0, 0, 0, 0)
+    #plot.margin = margin(-3, 29.9, 0, 24) 
+  ) +
+  coord_cartesian(clip = 'off')  
+
+# Adjusts the y-axis limits and breaks.
+plot_ez_spi <- plot_ez_spi + scale_y_continuous(
+  expand = c(0.0, 0.0),
+  limits = c(-5.0, 0.4),  
+  breaks = c(0.0,-2.5, -5.0)  
+)
+plot(plot_ez_spi)
+
+# save
+saveRDS(object = plot_ez_spi, file = "Output/EZ_spi_respiration_Condition.rds" )
+plot_ez_spi <- readRDS("Output/EZ_spi_respiration_Condition.rds")
+
+#Join plots
+#Call plots
+#Spi boxplot respiration
+plot_spi_box <- readRDS("Output/Spi_respiration_Condition.rds")
+plot_spi_box
+#Spi EZ respiration
+plot_ez_spi <- readRDS("Output/EZ_spi_respiration_Condition.rds")
+plot_ez_spi
+
+#Summary plot
+#The final code with all plots of Symbiotic corals is displayed.
+
+summaryplot <- ggarrange(
+  plot_glx_net, plot_pl_net, plot_spi_net, 
+  plot_ezglx_net, plot_ezpl_net, plot_ezspi_net, 
+  
+  plot_glx_res, plot_pl_res,plot_spi_res,
+  plot_ezglx_res,plot_ezpl_res, plot_ezspi_res,
+  
+  plot_glx_gross, plot_pl_gross,plot_spi_gross,
+  plot_ezglx_gross,plot_ezpl_gross, plot_ezspi_gross,
+  
+  labels = c("A", "B", "C", "D", "E", "F","G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R"),
+  font.label = list(size = 16, color = "black"),
+  hjust = -0.5, 
+  vjust = 1.5,   
+  align = "v", 
+  nrow = 6,      
+  ncol = 3,    
+  heights = c(5, 2.6,5,2.6, 5, 2.6), 
+  widths = c(1, 1, 1)
+  
+)
+
+summaryplot
+
+# Save 
+ggsave("Output/Summaryplot_ps.png", plot = summaryplot,
+       scale = 1, width = 40, height = 44, units = c("cm"),
+       dpi = 600, limitsize = FALSE)
+
+### The End
 
