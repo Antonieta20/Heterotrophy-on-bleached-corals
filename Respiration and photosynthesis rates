@@ -1,0 +1,189 @@
+Respiration
+## Coral symbioti respiration and photosynthesis rates
+# Bleached corals Respiration ---------------------------------
+# Entire Data analysis related to the respiration and photosynthesis rates
+# these variables were standardized for surface area
+
+## Upload data tables ---------------------------------------------------
+tab_res <- read.csv2("C:/Users/Maria/Documents/Maria Antonieta/Second_Manuscript/Data/respi3.csv", dec=".", sep = ",", header=T) 
+
+#First we calculate and extract necessary information 
+#from the table to make the data analysis easier
+#analysis was performed for t0 - t1 - t2
+
+#t0
+tab_res <- data.frame(tab_res)
+tab_res_t0 <- filter(tab_res, measurement == "t0")
+
+tab_incubations_t0 <- tab_res_t0 %>% 
+  mutate(day = as.numeric(as.factor(date)),  #adds column for day as number, converted from the date
+         light_diff_t0 = (o2_end_light - o2_start_light)/time_ligth*60,  #difference in O2 per h
+         dark_diff_t0 = (o2_end_dark - o2_start_dark)/time_dark*60,
+         waterVolume_t0 = 1005.011 - (water_volume / 1000), #calculate water Volume_t1 in jars
+         waterVolume_t0 = replace_na(waterVolume_t0,1005.011), #replace NAs in controls with Volume_t1 of jar
+         light_O2_perL_t0 = light_diff_t0/waterVolume_t0*1000,
+         dark_O2_perL_t0 =  dark_diff_t0/waterVolume_t0*1000)
+#t1
+tab_res_t1 <- filter(tab_res, measurement == "t1")
+tab_incubations_t1 <- tab_res_t1 %>% 
+  mutate(day = as.numeric(as.factor(date)),  #adds column for day as number, converted from the date
+         light_diff_t1 = (o2_end_light - o2_start_light)/time_ligth*60,  #difference in O2 per h
+         dark_diff_t1 = (o2_end_dark - o2_start_dark)/time_dark*60,
+         waterVolume_t1 = 1005.011 - (water_volume / 1000), #calculate water Volume_t1 in jars
+         waterVolume_t1 = replace_na(waterVolume_t1,1005.011), #replace NAs in controls with Volume_t1 of jar
+         light_O2_perL_t1 = light_diff_t1/waterVolume_t1*1000,
+         dark_O2_perL_t1 =  dark_diff_t1/waterVolume_t1*1000)
+
+#t2
+tab_res_t2 <- filter(tab_res, measurement == "t2")
+
+tab_incubations_t2 <- tab_res_t2 %>% 
+  mutate(day = as.numeric(as.factor(date)),  #adds column for day as number, converted from the date
+         light_diff_t2 = (o2_end_light - o2_start_light)/time_ligth*60,  #difference in O2 per h
+         dark_diff_t2 = (o2_end_dark - o2_start_dark)/time_dark*60,
+         waterVolume_t2 = 1005.011 - (water_volume / 1000), #calculate water Volume_t1 in jars
+         waterVolume_t2 = replace_na(waterVolume_t2,1005.011), #replace NAs in controls with Volume_t1 of jar
+         light_O2_perL_t2 = light_diff_t2/waterVolume_t2*1000,
+         dark_O2_perL_t2 =  dark_diff_t2/waterVolume_t2*1000)
+
+#save
+write.table(tab_incubations_t0, sep = ";", 
+            "Output/tab_incubations_t0.csv")
+write.table(tab_incubations_t1, sep = ";", 
+            "Output/tab_incubations_t1.csv")
+write.table(tab_incubations_t2, sep = ";", 
+            "Output/tab_incubations_t2.csv")
+
+#Calculate means from control incubations separated by 
+#light and dark incubation 
+
+#t0
+control_rates_light_t0 <-
+  tab_incubations_t0 %>%
+  filter(fragment=="control") %>% 
+  group_by(day) %>%
+  get_summary_stats(light_O2_perL, type = "mean_sd") %>% 
+  rename(con_light_O2_perL = mean)  %>% 
+  select(day, con_light_O2_perL)  
+
+control_rates_dark_t0 <-
+  tab_incubations_t0 %>%
+  filter(fragment=="control") %>% 
+  group_by(day) %>%
+  get_summary_stats(dark_O2_perL, type = "mean_sd") %>% 
+  rename(con_dark_O2_perL = mean) %>% 
+  select(day, con_dark_O2_perL)
+
+# Merge light and dark controls together
+control <- merge(control_rates_light_t0, control_rates_dark_t0, by="day", all = TRUE)
+#clean
+tab_psrate_t0 <- tab_incubations_t0 %>% 
+  filter(fragment!="control") %>% 
+  select(fragment, species,day,measurement,food, genotype, state, food,surf, light_O2_perL, dark_O2_perL)
+
+# Add controls as row behind data from fragments
+tab_psrate_t0 <- merge(tab_psrate_t0, control, by="day", all = TRUE)
+
+# Subtract controls from incubations and standardize to 
+#Surface_t1 area of the fragment
+tab_psrate_t0 <- tab_psrate_t0 %>% 
+  mutate(light_O2_perL_corrected = light_O2_perL - con_light_O2_perL, #subtract controls
+         dark_O2_perL_corrected = dark_O2_perL - con_dark_O2_perL, 
+         light_O2_perL_percm2 = light_O2_perL_corrected/(surf/100), #correct for Surface_t1 area
+         dark_O2_perL_percm2 = dark_O2_perL_corrected/(surf/100), 
+         net_ps = light_O2_perL_percm2*1000, #convert to µmO2
+         respiration = (dark_O2_perL_percm2*1000)*-1,# convert to consumed oxygen to positive values
+         gross_ps = net_ps + respiration) %>% 
+  select(fragment, genotype,species,state,measurement, food, day, net_ps, respiration, gross_ps)
+
+#save
+write.table(tab_psrate_t0, sep = ";", "Output/Tab_photosynthesisrates_processed_t0.csv")
+datatable(tab_psrate_t0, caption = "Table 2: Tab_photosynthesisrates_processed_t0.")
+
+#t1
+tab_incubations_t1 <- filter(tab_incubations, measurement == "t1")
+
+control_rates_light_t1 <-
+  tab_incubations_t1 %>%
+  filter(fragment=="control") %>% 
+  group_by(day) %>%
+  get_summary_stats(light_O2_perL, type = "mean_sd") %>% 
+  rename(con_light_O2_perL = mean)  %>% 
+  select(day, con_light_O2_perL)  
+
+control_rates_dark_t1 <-
+  tab_incubations_t1 %>%
+  filter(fragment=="control") %>% 
+  group_by(day) %>%
+  get_summary_stats(dark_O2_perL, type = "mean_sd") %>% 
+  rename(con_dark_O2_perL = mean) %>% 
+  select(day, con_dark_O2_perL)
+
+# Merge light and dark controls together
+control <- merge(control_rates_light_t1, control_rates_dark_t1, by="day", all = TRUE)
+tab_psrate_t1 <- tab_incubations_t1 %>% 
+  filter(fragment!="control") %>% 
+  select(fragment, species,day,measurement,food, genotype, state, food,surf, light_O2_perL, dark_O2_perL)
+
+# Add controls as row behind data from fragments
+tab_psrate_t1 <- merge(tab_psrate_t1, control, by="day", all = TRUE)
+# Subtract controls from incubations and standardize to 
+#Surface_t1 area of the fragment
+tab_psrate_t1 <- tab_psrate_t1 %>% 
+  mutate(light_O2_perL_corrected = light_O2_perL - con_light_O2_perL, #subtract controls
+         dark_O2_perL_corrected = dark_O2_perL - con_dark_O2_perL, 
+         light_O2_perL_percm2 = light_O2_perL_corrected/(surf/100), #correct for Surface_t1 area
+         dark_O2_perL_percm2 = dark_O2_perL_corrected/(surf/100), 
+         net_ps = light_O2_perL_percm2*1000, #convert to µmO2
+         respiration = (dark_O2_perL_percm2*1000)*-1,# convert to consumed oxygen to positive values
+         gross_ps = net_ps + respiration) %>% 
+  select(fragment, genotype, species, state,measurement,food, day, net_ps, respiration, gross_ps)
+
+#Save
+write.table(tab_psrate_t1, sep = ";", "Output/Tab_photosynthesisrates_processed_t1.csv")
+datatable(tab_psrate_t1, caption = "Table 2: Tab_photosynthesisrates_processed_t1.")
+
+#t2
+tab_incubations_t2 <- filter(tab_incubations, measurement == "t2")
+
+control_rates_light_t2 <-
+  tab_incubations_t2 %>%
+  filter(fragment=="control") %>% 
+  group_by(day) %>%
+  get_summary_stats(light_O2_perL, type = "mean_sd") %>% 
+  rename(con_light_O2_perL = mean)  %>% 
+  select(day, con_light_O2_perL)  
+
+control_rates_dark_t2 <-
+  tab_incubations_t2 %>%
+  filter(fragment=="control") %>% 
+  group_by(day) %>%
+  get_summary_stats(dark_O2_perL, type = "mean_sd") %>% 
+  rename(con_dark_O2_perL = mean) %>% 
+  select(day, con_dark_O2_perL)
+
+# Merge light and dark controls together
+control <- merge(control_rates_light_t2, control_rates_dark_t2, by="day", all = TRUE)
+tab_psrate_t2 <- tab_incubations_t2 %>% 
+  filter(fragment!="control") %>% 
+  select(fragment, species,day,measurement,food, genotype, state, food,surf, light_O2_perL, dark_O2_perL)
+
+# Add controls as row behind data from fragments
+tab_psrate_t2 <- merge(tab_psrate_t2, control, by="day", all = TRUE)
+# Subtract controls from incubations and standardize to 
+#Surface_t1 area of the fragment
+tab_psrate_t2 <- tab_psrate_t2 %>% 
+  mutate(light_O2_perL_corrected = light_O2_perL - con_light_O2_perL, #subtract controls
+         dark_O2_perL_corrected = dark_O2_perL - con_dark_O2_perL, 
+         light_O2_perL_percm2 = light_O2_perL_corrected/(surf/100), #correct for Surface_t1 area
+         dark_O2_perL_percm2 = dark_O2_perL_corrected/(surf/100), 
+         net_ps = light_O2_perL_percm2*1000, #convert to µmO2
+         respiration = (dark_O2_perL_percm2*1000)*-1,# convert to consumed oxygen to positive values
+         gross_ps = net_ps + respiration) %>% 
+  select(fragment, genotype, species, state,measurement,food, day, net_ps, respiration, gross_ps)
+
+#save
+write.table(tab_psrate_t2, sep = ";", "Output/Tab_photosynthesisrates_processed_t2.csv")
+datatable(tab_psrate_t2, caption = "Table 2: Tab_photosynthesisrates_processed_t2.")
+
+      
