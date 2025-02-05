@@ -983,3 +983,133 @@ ggsave("Output/Summaryplot_growth.png", plot = summaryplot,
        dpi = 600, limitsize = FALSE)
 
 ### The End
+
+
+
+# ANOVA_Revision ----------------------------------------------------------
+
+install.packages("broom")
+install.packages("AICcmodavg")
+
+library(broom)
+library(AICcmodavg)
+
+summary(tab_pictures)
+
+#Filter_species
+
+#Tab_Pve
+
+Tab_Pve <- filter(tab_growth, Species == "Pve")
+
+#Tab_Spi
+
+Tab_Spi <- filter(tab_growth, Species == "Spi")
+
+#ANOVA
+
+#growth_surf
+#Pve
+
+one.way_Pve <- aov(growth_surf ~ treatment, data = Tab_Pve)
+
+summary(one.way_Pve)
+
+check_normality(one.way_Pve)
+check_heteroscedasticity(one.way_Pve)
+
+#post-hoc test
+
+tukey.one.way_Pve <-TukeyHSD(one.way_Pve)
+
+tukey.one.way_Pve
+
+#Spi
+
+one.way_Spi <- aov(growth_surf ~ treatment, data = Tab_Spi)
+
+summary(one.way_Spi)
+
+check_normality(one.way_Spi)
+check_heteroscedasticity(one.way_Spi)
+
+#post-hoc test
+
+tukey.one.way_Spi <-TukeyHSD(one.way_Spi)
+
+tukey.one.way_Spi
+
+#growth_vol
+#Pve
+
+one.way_Pve <- aov(growth_vol ~ treatment, data = Tab_Pve)
+
+summary(one.way_Pve)
+
+check_normality(one.way_Pve)
+check_heteroscedasticity(one.way_Pve)
+
+#post-hoc test
+
+tukey.one.way_Pve <-TukeyHSD(one.way_Pve)
+
+tukey.one.way_Pve
+
+#Spi
+
+one.way_Spi <- aov(growth_vol ~ treatment, data = Tab_Spi)
+
+summary(one.way_Spi)
+
+check_normality(one.way_Spi)
+check_heteroscedasticity(one.way_Spi)
+
+#post-hoc test
+
+tukey.one.way_Spi <-TukeyHSD(one.way_Spi)
+
+tukey.one.way_Spi
+
+Filter_species
+
+#Tab_Pve
+
+Tab_Pve <- filter(tab_calcification, Species == "Pve")
+
+#Tab_Spi
+
+Tab_Spi <- filter(tab_calcification, Species == "Spi")
+
+#ANOVA
+
+#calcification
+#Pve
+
+one.way_Pve <- aov(calcification ~ treatment, data = Tab_Pve)
+
+summary(one.way_Pve)
+
+check_normality(one.way_Pve)
+check_heteroscedasticity(one.way_Pve)
+
+#post-hoc test
+
+tukey.one.way_Pve <-TukeyHSD(one.way_Pve)
+
+tukey.one.way_Pve
+
+#Spi
+
+one.way_Spi <- aov(calcification ~ treatment, data = Tab_Spi)
+
+summary(one.way_Spi)
+
+check_normality(one.way_Spi)
+check_heteroscedasticity(one.way_Spi)
+
+#post-hoc test
+
+tukey.one.way_Spi <-TukeyHSD(one.way_Spi)
+
+tukey.one.way_Spi
+
